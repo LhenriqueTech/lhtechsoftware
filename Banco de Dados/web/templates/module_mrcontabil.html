@@ -28,6 +28,15 @@
         </div>
         <div id="files-list" style="display:none; margin-top:12px;">
             <div class="preview-grid" id="files-grid"></div>
+            <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                <button class="btn btn-sm btn-secondary" id="btn-clear-files" style="display:flex;align-items:center;gap:6px;">
+                    <span class="material-icons-round" style="font-size:16px;">delete_sweep</span>
+                    Limpar arquivos
+                </button>
+                <span style="color:var(--text-secondary);font-size:13px;">
+                    Clique ou arraste novos PDFs para adicionar mais à lista.
+                </span>
+            </div>
         </div>
     </section>
 
@@ -125,6 +134,10 @@ let cpfDict = {
     "tahiara conceição": "CPF: 418.202.198-36"
 };
 
+// ─── Acumulador de arquivos PDF ───────────────────────
+// Map (nome → File) para deduplicar por nome de arquivo
+let allFilesMap = new Map();
+
 // ─── Utilitários ─────────────────────────────────────
 function show(id) { document.getElementById(id).style.display = ''; }
 function hide(id) { document.getElementById(id).style.display = 'none'; }
@@ -174,6 +187,53 @@ document.getElementById('btn-add-cpf').addEventListener('click', () => {
 
 renderCpfTable();
 
+// ─── Renderiza lista de PDFs acumulados ───────────────
+function renderFileGrid() {
+    const grid = document.getElementById('files-grid');
+    grid.innerHTML = '';
+
+    allFilesMap.forEach((file, name) => {
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `
+            <span class="material-icons-round">picture_as_pdf</span>
+            <div>
+                <span class="preview-label">${name}</span>
+                <span class="preview-value">${(file.size/1024).toFixed(0)} KB</span>
+            </div>
+            <button class="btn-icon" onclick="removeFile('${name}')" title="Remover" style="margin-left:auto;">
+                <span class="material-icons-round" style="font-size:16px;color:#e03131;">close</span>
+            </button>`;
+        grid.appendChild(div);
+    });
+
+    if (allFilesMap.size > 0) {
+        show('files-list');
+    } else {
+        hide('files-list');
+        hide('config-section');
+        hide('actions-section');
+        sessionId = null;
+    }
+}
+
+function removeFile(name) {
+    allFilesMap.delete(name);
+    renderFileGrid();
+    if (allFilesMap.size > 0) uploadAllFiles();
+}
+
+// Botão "Limpar arquivos"
+document.getElementById('btn-clear-files').addEventListener('click', () => {
+    allFilesMap.clear();
+    sessionId = null;
+    renderFileGrid();
+    hide('config-section');
+    hide('actions-section');
+    hide('download-box');
+    toast('Lista de arquivos limpa.');
+});
+
 // ─── Upload de PDFs ───────────────────────────────────
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -184,34 +244,39 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-ove
 dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    handleFiles(e.dataTransfer.files);
+    addFiles(e.dataTransfer.files);
 });
-fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+fileInput.addEventListener('change', () => {
+    addFiles(fileInput.files);
+    fileInput.value = '';   // permite re-selecionar os mesmos arquivos depois
+});
 
-function handleFiles(files) {
+function addFiles(files) {
     const pdfs = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
     if (!pdfs.length) { toast('Selecione arquivos PDF.', 'error'); return; }
 
-    const grid = document.getElementById('files-grid');
-    grid.innerHTML = '';
+    let newCount = 0;
     pdfs.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'preview-item';
-        div.innerHTML = `<span class="material-icons-round">picture_as_pdf</span><div><span class="preview-label">${f.name}</span><span class="preview-value">${(f.size/1024).toFixed(0)} KB</span></div>`;
-        grid.appendChild(div);
+        if (!allFilesMap.has(f.name)) newCount++;
+        allFilesMap.set(f.name, f);
     });
-    show('files-list');
 
-    // Faz upload
+    renderFileGrid();
+    toast(`${newCount} novo(s) PDF(s) adicionado(s). Total: ${allFilesMap.size} arquivo(s).`);
+    uploadAllFiles();
+}
+
+function uploadAllFiles() {
+    if (allFilesMap.size === 0) return;
+
     const formData = new FormData();
-    pdfs.forEach(f => formData.append('pdfs', f));
+    allFilesMap.forEach(file => formData.append('pdfs', file));
 
     fetch('/modulo/mrcontabil/upload-pdfs', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
             if (data.error) { toast(data.error, 'error'); return; }
             sessionId = data.session_id;
-            toast(`${data.files.length} PDF(s) enviado(s) com sucesso!`);
             show('config-section');
             show('actions-section');
         })
