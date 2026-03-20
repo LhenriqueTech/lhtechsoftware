@@ -39,6 +39,14 @@
             </a>
             {% endfor %}
 
+            {% if current_user.is_fiscal %}
+            <div class="nav-divider">Ferramentas</div>
+            <a href="/conversor" class="nav-item {% if request.path == '/conversor' %}active{% endif %}">
+                <span class="material-icons-round">transform</span>
+                <span>Conversor TXT</span>
+            </a>
+            {% endif %}
+
             {% if current_user.is_admin %}
             <div class="nav-divider">Administração</div>
             <a href="/admin/users" class="nav-item {% if '/admin' in request.path %}active{% endif %}">
@@ -53,7 +61,7 @@
                 <span class="material-icons-round">account_circle</span>
                 <div>
                     <span class="user-name">{{ current_user.full_name or current_user.username }}</span>
-                    <span class="user-role">{{ 'Admin' if current_user.is_admin else 'Usuário' }}</span>
+                    <span class="user-role">{{ 'Admin' if current_user.is_admin else ('Fiscal' if current_user.is_fiscal else 'Usuário') }}</span>
                 </div>
             </div>
             <a href="/logout" class="nav-item nav-logout">

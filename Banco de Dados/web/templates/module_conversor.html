@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Conversor UTF-8 → ANSI — LH TECH{% endblock %}
+{% block page_title %}Conversor UTF-8 → ANSI{% endblock %}
+
+{% block content %}
+<div class="module-page">
+
+    <!-- Upload de TXTs -->
+    <section class="card" id="upload-section">
+        <div class="card-header">
+            <span class="step-badge">1</span>
+            <h2>Selecionar arquivos TXT</h2>
+        </div>
+        <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone-content">
+                <span class="material-icons-round drop-icon">description</span>
+                <p class="drop-text">Arraste os arquivos <strong>TXT (UTF-8)</strong> aqui</p>
+                <p class="drop-subtext">ou clique para selecionar (múltiplos arquivos suportados)</p>
+            </div>
+            <input type="file" id="file-input" accept=".txt" multiple hidden>
+        </div>
+
+        <div id="files-list" style="display:none; margin-top:12px;">
+            <div class="preview-grid" id="files-grid"></div>
+            <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                <button class="btn btn-sm btn-secondary" id="btn-clear" style="display:flex;align-items:center;gap:6px;">
+                    <span class="material-icons-round" style="font-size:16px;">delete_sweep</span>
+                    Limpar lista
+                </button>
+                <span style="color:var(--text-secondary);font-size:13px;">
+                    Clique ou arraste mais arquivos para adicionar à lista.
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Converter -->
+    <section class="card" id="convert-section" style="display:none;">
+        <div class="card-header">
+            <span class="step-badge">2</span>
+            <h2>Converter e Baixar</h2>
+        </div>
+        <div class="actions-row">
+            <button class="btn btn-primary" id="btn-convert" style="font-size:15px; padding:10px 28px;">
+                <span class="material-icons-round">transform</span>
+                Converter para ANSI e Baixar ZIP
+            </button>
+        </div>
+        <div class="progress-container" id="progress-container" style="display:none; margin-top:16px;">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            <span class="progress-text" id="progress-text">Convertendo...</span>
+        </div>
+        <div class="download-box" id="download-box" style="display:none; margin-top:16px;">
+            <span class="material-icons-round download-icon">check_circle</span>
+            <span class="download-text" id="download-text">Arquivos convertidos com sucesso!</span>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── Estado ───────────────────────────────────────────
+let allFilesMap = new Map();   // nome → File
+
+// ─── Utilitários ──────────────────────────────────────
+function show(id)      { document.getElementById(id).style.display = ''; }
+function hide(id)      { document.getElementById(id).style.display = 'none'; }
+function showBlock(id) { document.getElementById(id).style.display = 'block'; }
+
+function toast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.innerHTML = `<span class="material-icons-round">${type === 'success' ? 'check_circle' : 'error'}</span> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 4000);
+}
+
+// ─── Renderiza grid ───────────────────────────────────
+function renderGrid() {
+    const grid = document.getElementById('files-grid');
+    grid.innerHTML = '';
+    allFilesMap.forEach((file, name) => {
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `
+            <span class="material-icons-round">description</span>
+            <div>
+                <span class="preview-label">${name}</span>
+                <span class="preview-value">${(file.size / 1024).toFixed(1)} KB</span>
+            </div>
+            <button class="btn-icon" onclick="removeFile('${name}')" title="Remover" style="margin-left:auto;">
+                <span class="material-icons-round" style="font-size:16px;color:#e03131;">close</span>
+            </button>`;
+        grid.appendChild(div);
+    });
+
+    if (allFilesMap.size > 0) {
+        show('files-list');
+        show('convert-section');
+    } else {
+        hide('files-list');
+        hide('convert-section');
+        hide('download-box');
+    }
+}
+
+function removeFile(name) {
+    allFilesMap.delete(name);
+    renderGrid();
+}
+
+// ─── Limpar ───────────────────────────────────────────
+document.getElementById('btn-clear').addEventListener('click', () => {
+    allFilesMap.clear();
+    renderGrid();
+    toast('Lista limpa.');
+});
+
+// ─── Drop zone ────────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+
+function addFiles(files) {
+    const txts = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.txt'));
+    if (!txts.length) { toast('Selecione arquivos .txt.', 'error'); return; }
+
+    let newCount = 0;
+    txts.forEach(f => {
+        if (!allFilesMap.has(f.name)) newCount++;
+        allFilesMap.set(f.name, f);
+    });
+    renderGrid();
+    toast(`${newCount} arquivo(s) adicionado(s). Total: ${allFilesMap.size}.`);
+}
+
+// ─── Converter ────────────────────────────────────────
+document.getElementById('btn-convert').addEventListener('click', async () => {
+    if (allFilesMap.size === 0) { toast('Adicione arquivos .txt primeiro.', 'error'); return; }
+
+    hide('download-box');
+    showBlock('progress-container');
+    document.getElementById('progress-fill').style.width = '40%';
+    document.getElementById('progress-text').textContent = 'Enviando e convertendo...';
+    document.getElementById('btn-convert').disabled = true;
+
+    const formData = new FormData();
+    allFilesMap.forEach(file => formData.append('txts', file));
+
+    try {
+        const resp = await fetch('/conversor/converter', { method: 'POST', body: formData });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ error: 'Erro desconhecido.' }));
+            throw new Error(err.error || resp.statusText);
+        }
+
+        // Força download do ZIP retornado
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('progress-text').textContent = 'Pronto!';
+
+        const blob      = await resp.blob();
+        const disposition = resp.headers.get('Content-Disposition') || '';
+        const match     = disposition.match(/filename="?([^"]+)"?/);
+        const filename  = match ? match[1] : 'convertidos.zip';
+
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        document.getElementById('download-text').textContent =
+            `${allFilesMap.size} arquivo(s) convertido(s) — download iniciado!`;
+        show('download-box');
+        toast(`${allFilesMap.size} arquivo(s) convertido(s)!`);
+
+    } catch (err) {
+        toast(err.message || 'Erro ao converter.', 'error');
+        hide('progress-container');
+    } finally {
+        document.getElementById('btn-convert').disabled = false;
+        hide('progress-container');
+    }
+});
+</script>
+{% endblock %}

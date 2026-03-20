@@ -8,6 +8,7 @@ from models import init_db, COMPANIES
 from auth import auth_bp, init_login_manager
 from admin import admin_bp
 from modules import modules_bp
+from conversor import conversor_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
@@ -17,6 +18,7 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(modules_bp)
+app.register_blueprint(conversor_bp)
 
 # Configura Flask-Login
 init_login_manager(app)

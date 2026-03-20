@@ -49,6 +49,12 @@
                             </span>
                             {% endif %}
                             {% endfor %}
+                            {% if 'conversor' in user.get('tools', []) %}
+                            <span class="tag" style="--tag-color: #7950f2">
+                                <span class="material-icons-round" style="font-size:12px;vertical-align:middle;">transform</span>
+                                Fiscal
+                            </span>
+                            {% endif %}
                         </div>
                     </td>
                     <td>

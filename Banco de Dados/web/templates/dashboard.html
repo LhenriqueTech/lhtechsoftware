@@ -29,6 +29,20 @@
             <span class="material-icons-round company-arrow">arrow_forward</span>
         </a>
         {% endfor %}
+
+        {% if current_user.is_fiscal %}
+        <a href="/conversor" class="company-card" style="--card-color: #7950f2">
+            <div class="company-icon">
+                <span class="material-icons-round">transform</span>
+            </div>
+            <div class="company-info">
+                <h3>Conversor TXT</h3>
+                <p>Conversão de arquivos TXT de UTF-8 para ANSI</p>
+            </div>
+            <div class="company-badge company-badge-active">Ativo</div>
+            <span class="material-icons-round company-arrow">arrow_forward</span>
+        </a>
+        {% endif %}
     </div>
 
     {% if current_user.is_admin %}

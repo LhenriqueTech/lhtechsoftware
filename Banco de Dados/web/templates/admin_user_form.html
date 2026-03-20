@@ -44,7 +44,7 @@
                     Perfil
                 </label>
                 <select id="role" name="role" class="form-select">
-                    <option value="user" {% if user.get('role') == 'user' %}selected{% endif %}>Usuário</option>
+                    <option value="user"  {% if user.get('role') == 'user'  %}selected{% endif %}>Usuário</option>
                     <option value="admin" {% if user.get('role') == 'admin' %}selected{% endif %}>Administrador</option>
                 </select>
             </div>
@@ -64,6 +64,21 @@
                     </label>
                     {% endfor %}
                 </div>
+
+            <div class="form-group">
+                <label>
+                    <span class="material-icons-round">build_circle</span>
+                    Ferramentas com acesso
+                </label>
+                <div class="checkbox-grid">
+                    <label class="checkbox-item" style="--check-color: #7950f2">
+                        <input type="checkbox" name="tools" value="conversor"
+                               {% if 'conversor' in (user.get('tools', [])) %}checked{% endif %}>
+                        <span class="material-icons-round check-icon">transform</span>
+                        <span>Conversor TXT (Fiscal)</span>
+                    </label>
+                </div>
+            </div>
             </div>
 
             {% if mode == 'edit' %}

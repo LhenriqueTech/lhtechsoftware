@@ -15,14 +15,20 @@ class User(UserMixin):
         self.full_name = user_dict["full_name"]
         self.role = user_dict["role"]
         self.companies = user_dict["companies"]
+        self.tools = user_dict.get("tools", [])
         self.active = user_dict["active"]
 
     @property
     def is_admin(self):
         return self.role == "admin"
 
+    @property
+    def is_fiscal(self):
+        return self.is_admin or "conversor" in self.tools
+
     def has_company(self, slug):
         return self.is_admin or slug in self.companies
+
 
 
 def init_login_manager(app):

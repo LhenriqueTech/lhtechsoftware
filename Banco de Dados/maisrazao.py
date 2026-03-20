@@ -113,22 +113,21 @@ def _write_day_row(ws, row, date_str, date_obj, match):
 
     _cell(ws, row, 1,  date_str,                        fill=fill)
     _cell(ws, row, 2,  _weekday_pt(date_obj),           fill=fill)
-    # match[1..6] = horários do PDF (índices 1-6)
     for j, val in enumerate(match[1:7]):
         _cell(ws, row, 3 + j, val if val else "",       fill=fill)
 
-    # G = Horas de Trabalho
-    _cell(ws, row, 7, f"=F{row}-C{row}-(E{row}-D{row})",
-          number_format="[h]:mm:ss", fill=fill)
-    # H = H. Semanal (fixo)
-    _cell(ws, row, 8, JORNADA_SEMANAL_FRACTION,
-          number_format="[h]:mm:ss", fill=fill)
-    # I = Horas Extras
-    _cell(ws, row, 9, f"=IF(G{row}>H{row},G{row}-H{row},0)",
-          number_format="[h]:mm:ss", fill=fill)
-    # J = Horas Negativas
-    _cell(ws, row, 10, f"=IF(G{row}<H{row},H{row}-G{row},0)",
-          number_format="[h]:mm:ss", fill=fill)
+    if is_weekend:
+        for col in range(7, 11):
+            _cell(ws, row, col, 0, number_format="[h]:mm:ss", fill=fill)
+    else:
+        _cell(ws, row, 7, f"=F{row}-C{row}-(E{row}-D{row})",
+              number_format="[h]:mm:ss", fill=fill)
+        _cell(ws, row, 8, JORNADA_SEMANAL_FRACTION,
+              number_format="[h]:mm:ss", fill=fill)
+        _cell(ws, row, 9, f"=IF(G{row}>H{row},G{row}-H{row},0)",
+              number_format="[h]:mm:ss", fill=fill)
+        _cell(ws, row, 10, f"=IF(G{row}<H{row},H{row}-G{row},0)",
+              number_format="[h]:mm:ss", fill=fill)
 
 
 def _write_weekly_total(ws, row, start_row, end_row):

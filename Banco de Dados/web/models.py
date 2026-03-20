@@ -50,6 +50,7 @@ def init_db():
             full_name TEXT NOT NULL DEFAULT '',
             role TEXT NOT NULL DEFAULT 'user',
             companies TEXT NOT NULL DEFAULT '[]',
+            tools TEXT NOT NULL DEFAULT '[]',
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             last_login TEXT,
@@ -59,12 +60,16 @@ def init_db():
     conn.commit()
 
     # Migração simples: garante que colunas novas existam caso o BD já tenha sido criado
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN last_login TEXT")
-        conn.execute("ALTER TABLE users ADD COLUMN last_ip TEXT")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass # Colunas já existem
+    for col_def in [
+        "ALTER TABLE users ADD COLUMN last_login TEXT",
+        "ALTER TABLE users ADD COLUMN last_ip TEXT",
+        "ALTER TABLE users ADD COLUMN tools TEXT NOT NULL DEFAULT '[]'",
+    ]:
+        try:
+            conn.execute(col_def)
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
 
     # Cria admin padrão se não existir
     admin = conn.execute("SELECT id FROM users WHERE username = ?", ("admin",)).fetchone()
@@ -77,12 +82,13 @@ def init_db():
 # ─── CRUD ────────────────────────────────────────────
 
 
-def create_user(conn, username, password, full_name, role="user", companies=None):
+def create_user(conn, username, password, full_name, role="user", companies=None, tools=None):
     pw_hash = generate_password_hash(password)
     companies_json = json.dumps(companies or [])
+    tools_json = json.dumps(tools or [])
     conn.execute(
-        "INSERT INTO users (username, password_hash, full_name, role, companies) VALUES (?, ?, ?, ?, ?)",
-        (username, pw_hash, full_name, role, companies_json)
+        "INSERT INTO users (username, password_hash, full_name, role, companies, tools) VALUES (?, ?, ?, ?, ?, ?)",
+        (username, pw_hash, full_name, role, companies_json, tools_json)
     )
     conn.commit()
 
@@ -116,7 +122,7 @@ def list_users():
     return [_row_to_dict(r) for r in rows]
 
 
-def update_user(user_id, full_name=None, role=None, companies=None, password=None, active=None):
+def update_user(user_id, full_name=None, role=None, companies=None, tools=None, password=None, active=None):
     conn = get_db()
     fields = []
     values = []
@@ -130,6 +136,9 @@ def update_user(user_id, full_name=None, role=None, companies=None, password=Non
     if companies is not None:
         fields.append("companies = ?")
         values.append(json.dumps(companies))
+    if tools is not None:
+        fields.append("tools = ?")
+        values.append(json.dumps(tools))
     if password is not None:
         fields.append("password_hash = ?")
         values.append(generate_password_hash(password))
@@ -168,4 +177,8 @@ def _row_to_dict(row):
         d["companies"] = json.loads(d.get("companies", "[]"))
     except Exception:
         d["companies"] = []
+    try:
+        d["tools"] = json.loads(d.get("tools", "[]"))
+    except Exception:
+        d["tools"] = []
     return d

@@ -40,6 +40,7 @@ def user_new():
         full_name = request.form.get("full_name", "").strip()
         role = request.form.get("role", "user")
         companies = request.form.getlist("companies")
+        tools = request.form.getlist("tools")
 
         if not username or not password:
             flash("Usuário e senha são obrigatórios.", "error")
@@ -53,7 +54,7 @@ def user_new():
                                    user={}, companies=COMPANIES)
 
         conn = get_db()
-        create_user(conn, username, password, full_name, role, companies)
+        create_user(conn, username, password, full_name, role, companies, tools)
         conn.close()
         flash(f"Usuário '{username}' criado com sucesso!", "success")
         return redirect(url_for("admin.users_list"))
@@ -77,6 +78,7 @@ def user_edit(user_id):
         full_name = request.form.get("full_name", "").strip()
         role = request.form.get("role", "user")
         companies = request.form.getlist("companies")
+        tools = request.form.getlist("tools")
         password = request.form.get("password", "").strip()
         active = request.form.get("active") == "on"
 
@@ -84,6 +86,7 @@ def user_edit(user_id):
             "full_name": full_name,
             "role": role,
             "companies": companies,
+            "tools": tools,
             "active": active,
         }
         if password:
