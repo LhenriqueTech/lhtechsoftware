@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Usuários — LH TECH{% endblock %}
+{% block page_title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="admin-header">
+        <h2>Usuários do Sistema</h2>
+        <a href="/admin/users/new" class="btn btn-primary">
+            <span class="material-icons-round">person_add</span>
+            Novo Usuário
+        </a>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Nome Completo</th>
+                    <th>Perfil</th>
+                    <th>Empresas</th>
+                    <th>Último Acesso / IP</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="material-icons-round">account_circle</span>
+                            <strong>{{ user.username }}</strong>
+                        </div>
+                    </td>
+                    <td>{{ user.full_name or '—' }}</td>
+                    <td>
+                        <span class="role-badge role-{{ user.role }}">
+                            {{ 'Admin' if user.role == 'admin' else 'Usuário' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="company-tags">
+                            {% for slug in user.companies %}
+                            {% if slug in companies %}
+                            <span class="tag" style="--tag-color: {{ companies[slug].color }}">
+                                {{ companies[slug].name }}
+                            </span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="audit-cell">
+                            <span class="audit-time">{{ user.last_login or 'Nunca' }}</span>
+                            <span class="audit-ip">{{ user.last_ip or '' }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-dot {% if user.active %}status-active{% else %}status-inactive{% endif %}"></span>
+                        {{ 'Ativo' if user.active else 'Inativo' }}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="/admin/users/{{ user.id }}/edit" class="btn-icon" title="Editar">
+                                <span class="material-icons-round">edit</span>
+                            </a>
+                            {% if user.username != 'admin' %}
+                            <form method="POST" action="/admin/users/{{ user.id }}/delete"
+                                  onsubmit="return confirm('Excluir usuário {{ user.username }}?')" style="display:inline;">
+                                <button type="submit" class="btn-icon btn-danger-icon" title="Excluir">
+                                    <span class="material-icons-round">delete</span>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — LH TECH{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="welcome-banner">
+        <div class="welcome-text">
+            <h2>Bem-vindo, <span class="accent">{{ current_user.full_name or current_user.username }}</span>!</h2>
+            <p>Selecione um módulo abaixo para começar a gerar relatórios.</p>
+        </div>
+    </div>
+
+    <div class="company-grid">
+        {% for slug, co in companies.items() %}
+        <a href="/modulo/{{ slug }}" class="company-card" style="--card-color: {{ co.color }}">
+            <div class="company-icon">
+                <span class="material-icons-round">{{ co.icon }}</span>
+            </div>
+            <div class="company-info">
+                <h3>{{ co.name }}</h3>
+                <p>{{ co.description }}</p>
+            </div>
+            {% if not co.active %}
+            <div class="company-badge">Em desenvolvimento</div>
+            {% else %}
+            <div class="company-badge company-badge-active">Ativo</div>
+            {% endif %}
+            <span class="material-icons-round company-arrow">arrow_forward</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if current_user.is_admin %}
+    <div class="admin-shortcut">
+        <a href="/admin/users" class="btn btn-secondary">
+            <span class="material-icons-round">admin_panel_settings</span>
+            Gerenciar Usuários
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

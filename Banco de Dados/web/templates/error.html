@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Erro {{ code }} — LH TECH{% endblock %}
+{% block page_title %}Erro {{ code }}{% endblock %}
+
+{% block content %}
+<div class="placeholder-page">
+    <div class="placeholder-card">
+        <div class="placeholder-icon" style="--icon-color: #ff6b6b">
+            <span class="material-icons-round">error_outline</span>
+        </div>
+        <h2>Erro {{ code }}</h2>
+        <p class="placeholder-desc">{{ message }}</p>
+        <a href="/dashboard" class="btn btn-secondary">
+            <span class="material-icons-round">arrow_back</span>
+            Voltar ao Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

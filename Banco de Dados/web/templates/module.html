@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — LH TECH{% endblock %}
+{% block page_title %}{{ company.name }}{% endblock %}
+
+{% block head %}
+<script>
+    window.MODULE_SLUG = "{{ slug }}";
+    window.MODULE_NAME = "{{ company.name }}";
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="module-page">
+    <!-- Step 1: Upload -->
+    <section class="card" id="upload-section">
+        <div class="card-header">
+            <span class="step-badge">1</span>
+            <h2>Selecionar Arquivo</h2>
+        </div>
+        <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone-content">
+                <span class="material-icons-round drop-icon">cloud_upload</span>
+                <p class="drop-text">Arraste o arquivo base <strong>(.xlsx)</strong> aqui</p>
+                <p class="drop-subtext">ou clique para selecionar</p>
+            </div>
+            <input type="file" id="file-input" accept=".xlsx,.xlsm,.xls" hidden>
+        </div>
+        <div class="file-info" id="file-info" style="display:none;">
+            <span class="material-icons-round file-icon">description</span>
+            <div class="file-details">
+                <span class="file-name" id="file-name"></span>
+                <span class="file-meta" id="file-meta"></span>
+            </div>
+            <button class="btn-icon" id="btn-remove-file" title="Remover arquivo">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Step 2: Preview -->
+    <section class="card" id="preview-section" style="display:none;">
+        <div class="card-header">
+            <span class="step-badge">2</span>
+            <h2>Preview</h2>
+        </div>
+        <div class="preview-grid" id="preview-grid">
+            <div class="preview-item">
+                <span class="material-icons-round">calendar_month</span>
+                <div>
+                    <span class="preview-label">Mês/Ano</span>
+                    <span class="preview-value" id="preview-month">—</span>
+                </div>
+            </div>
+            <div class="preview-item">
+                <span class="material-icons-round">people</span>
+                <div>
+                    <span class="preview-label">Funcionários</span>
+                    <span class="preview-value" id="preview-count">—</span>
+                </div>
+            </div>
+            <div class="preview-item">
+                <span class="material-icons-round">tab</span>
+                <div>
+                    <span class="preview-label">Abas</span>
+                    <span class="preview-value" id="preview-sheets">—</span>
+                </div>
+            </div>
+        </div>
+        <div class="names-list" id="names-list"></div>
+    </section>
+
+    <!-- Step 3: Actions -->
+    <section class="card" id="actions-section" style="display:none;">
+        <div class="card-header">
+            <span class="step-badge">3</span>
+            <h2>Gerar Relatório</h2>
+        </div>
+        <div class="actions-row">
+            <button class="btn btn-secondary" id="btn-jornadas">
+                <span class="material-icons-round">schedule</span>
+                Configurar Jornadas
+            </button>
+            <button class="btn btn-primary" id="btn-generate">
+                <span class="material-icons-round">bolt</span>
+                Gerar Relatórios
+            </button>
+        </div>
+        <div class="progress-container" id="progress-container" style="display:none;">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <span class="progress-text" id="progress-text">Processando...</span>
+        </div>
+        <div class="download-box" id="download-box" style="display:none;">
+            <span class="material-icons-round download-icon">check_circle</span>
+            <span class="download-text">Relatório gerado com sucesso!</span>
+            <a class="btn btn-success" id="btn-download" href="#" download>
+                <span class="material-icons-round">download</span>
+                Baixar Relatório
+            </a>
+        </div>
+    </section>
+</div>
+
+<!-- ═══ Modal Jornadas ═══ -->
+<div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal" id="modal-jornadas">
+        <div class="modal-header">
+            <h2><span class="material-icons-round">schedule</span> Configurar Jornadas</h2>
+            <button class="btn-icon" id="modal-close"><span class="material-icons-round">close</span></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="jornada-person">Colaborador</label>
+                <select id="jornada-person" class="form-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="jornada-cpf">CPF</label>
+                <input type="text" id="jornada-cpf" class="form-input" placeholder="000.000.000-00" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label>Jornada padrão por dia da semana (hh:mm)</label>
+                <div class="week-grid">
+                    <div class="week-day"><span>Seg</span><input type="text" class="form-input week-input" id="jw-0" placeholder="08:48"></div>
+                    <div class="week-day"><span>Ter</span><input type="text" class="form-input week-input" id="jw-1" placeholder="08:48"></div>
+                    <div class="week-day"><span>Qua</span><input type="text" class="form-input week-input" id="jw-2" placeholder="08:48"></div>
+                    <div class="week-day"><span>Qui</span><input type="text" class="form-input week-input" id="jw-3" placeholder="08:48"></div>
+                    <div class="week-day"><span>Sex</span><input type="text" class="form-input week-input" id="jw-4" placeholder="08:48"></div>
+                    <div class="week-day"><span>Sáb</span><input type="text" class="form-input week-input" id="jw-5" placeholder="00:00"></div>
+                    <div class="week-day"><span>Dom</span><input type="text" class="form-input week-input" id="jw-6" placeholder="00:00"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Exceções por data</label>
+                <div class="exceptions-table-wrapper">
+                    <table class="exceptions-table" id="exceptions-table">
+                        <thead><tr><th>Data (YYYY-MM-DD)</th><th>Horas (hh:mm)</th><th></th></tr></thead>
+                        <tbody id="exceptions-body"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-sm btn-secondary" id="btn-add-exception">
+                    <span class="material-icons-round">add</span> Adicionar exceção
+                </button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="btn-load-json"><span class="material-icons-round">folder_open</span> Carregar JSON</button>
+            <button class="btn btn-secondary" id="btn-save-json"><span class="material-icons-round">save</span> Salvar JSON</button>
+            <div class="spacer"></div>
+            <button class="btn btn-primary" id="btn-apply-jornadas"><span class="material-icons-round">check</span> Aplicar</button>
+        </div>
+        <input type="file" id="json-file-input" accept=".json" hidden>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}

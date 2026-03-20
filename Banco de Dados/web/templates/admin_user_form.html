@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Novo Usuário' if mode == 'new' else 'Editar Usuário' }} — LH TECH{% endblock %}
+{% block page_title %}{{ 'Novo Usuário' if mode == 'new' else 'Editar: ' + user.get('username', '') }}{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="form-card">
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">
+                    <span class="material-icons-round">person</span>
+                    Nome de usuário (login)
+                </label>
+                {% if mode == 'new' %}
+                <input type="text" id="username" name="username" class="form-input"
+                       value="{{ user.get('username', '') }}" required placeholder="Ex: joao.silva">
+                {% else %}
+                <input type="text" class="form-input" value="{{ user.get('username', '') }}" disabled>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="full_name">
+                    <span class="material-icons-round">badge</span>
+                    Nome completo
+                </label>
+                <input type="text" id="full_name" name="full_name" class="form-input"
+                       value="{{ user.get('full_name', '') }}" placeholder="Ex: João da Silva">
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    <span class="material-icons-round">lock</span>
+                    Senha {% if mode == 'edit' %}<small>(deixe em branco para manter)</small>{% endif %}
+                </label>
+                <input type="password" id="password" name="password" class="form-input"
+                       placeholder="{% if mode == 'new' %}Defina a senha{% else %}••••••••{% endif %}"
+                       {% if mode == 'new' %}required{% endif %}>
+            </div>
+
+            <div class="form-group">
+                <label for="role">
+                    <span class="material-icons-round">security</span>
+                    Perfil
+                </label>
+                <select id="role" name="role" class="form-select">
+                    <option value="user" {% if user.get('role') == 'user' %}selected{% endif %}>Usuário</option>
+                    <option value="admin" {% if user.get('role') == 'admin' %}selected{% endif %}>Administrador</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <span class="material-icons-round">business</span>
+                    Empresas com acesso
+                </label>
+                <div class="checkbox-grid">
+                    {% for slug, co in companies.items() %}
+                    <label class="checkbox-item" style="--check-color: {{ co.color }}">
+                        <input type="checkbox" name="companies" value="{{ slug }}"
+                               {% if slug in (user.get('companies', [])) %}checked{% endif %}>
+                        <span class="material-icons-round check-icon">{{ co.icon }}</span>
+                        <span>{{ co.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if mode == 'edit' %}
+            <div class="form-group">
+                <label class="checkbox-item checkbox-standalone">
+                    <input type="checkbox" name="active" {% if user.get('active', True) %}checked{% endif %}>
+                    <span>Conta ativa</span>
+                </label>
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <a href="/admin/users" class="btn btn-secondary">
+                    <span class="material-icons-round">arrow_back</span> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons-round">save</span>
+                    {{ 'Criar Usuário' if mode == 'new' else 'Salvar Alterações' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

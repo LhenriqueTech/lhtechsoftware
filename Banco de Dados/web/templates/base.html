@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LH TECH{% endblock %}</title>
+    <meta name="description" content="Sistema de Relatórios LH TECH">
+    <link rel="icon" href="/static/logo.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}has-sidebar{% endblock %}">
+
+    {% if current_user.is_authenticated %}
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="/static/logo.png" alt="LH TECH" class="sidebar-logo">
+            <span class="sidebar-brand">LH TECH</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+                <span class="material-icons-round">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+
+            <div class="nav-divider">Módulos</div>
+
+            {% for slug, co in companies.items() if companies is defined %}
+            <a href="/modulo/{{ slug }}" class="nav-item {% if request.path == '/modulo/' + slug %}active{% endif %}">
+                <span class="material-icons-round">{{ co.icon }}</span>
+                <span>{{ co.name }}</span>
+                {% if not co.active %}
+                <span class="badge badge-dim">Em breve</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+
+            {% if current_user.is_admin %}
+            <div class="nav-divider">Administração</div>
+            <a href="/admin/users" class="nav-item {% if '/admin' in request.path %}active{% endif %}">
+                <span class="material-icons-round">admin_panel_settings</span>
+                <span>Gerenciar Usuários</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <span class="material-icons-round">account_circle</span>
+                <div>
+                    <span class="user-name">{{ current_user.full_name or current_user.username }}</span>
+                    <span class="user-role">{{ 'Admin' if current_user.is_admin else 'Usuário' }}</span>
+                </div>
+            </div>
+            <a href="/logout" class="nav-item nav-logout">
+                <span class="material-icons-round">logout</span>
+                <span>Sair</span>
+            </a>
+        </div>
+    </aside>
+    {% endif %}
+
+    <!-- ═══ Main ═══ -->
+    <div class="main-wrapper {% if not current_user.is_authenticated %}no-sidebar{% endif %}">
+        {% if current_user.is_authenticated %}
+        <header class="topbar">
+            <button class="btn-icon sidebar-toggle" id="sidebar-toggle">
+                <span class="material-icons-round">menu</span>
+            </button>
+            <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <div class="topbar-right">
+                <span class="header-badge">v2.0 Web</span>
+            </div>
+        </header>
+        {% endif %}
+
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span class="material-icons-round">
+                        {% if category == 'success' %}check_circle{% elif category == 'error' %}error{% else %}info{% endif %}
+                    </span>
+                    {{ message }}
+                    <button class="flash-close" onclick="this.parentElement.remove()">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- ═══ Toast Container ═══ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // Sidebar toggle
+        const toggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        if (toggle && sidebar) {
+            toggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+            // Fechar sidebar ao clicar fora no mobile
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 && sidebar.classList.contains('open')
+                    && !sidebar.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+
+        // Auto-hide flash messages
+        document.querySelectorAll('.flash').forEach(el => {
+            setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 5000);
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

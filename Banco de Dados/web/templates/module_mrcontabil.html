@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — LH TECH{% endblock %}
+{% block page_title %}{{ company.name }}{% endblock %}
+
+{% block head %}
+<script>
+    window.MODULE_SLUG = "mrcontabil";
+    window.MODULE_NAME = "{{ company.name }}";
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="module-page">
+
+    <!-- Step 1: Upload PDFs -->
+    <section class="card" id="upload-section">
+        <div class="card-header">
+            <span class="step-badge">1</span>
+            <h2>Enviar PDFs de Ponto</h2>
+        </div>
+        <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone-content">
+                <span class="material-icons-round drop-icon">picture_as_pdf</span>
+                <p class="drop-text">Arraste os arquivos <strong>PDF</strong> de ponto aqui</p>
+                <p class="drop-subtext">ou clique para selecionar (múltiplos arquivos suportados)</p>
+            </div>
+            <input type="file" id="file-input" accept=".pdf" multiple hidden>
+        </div>
+        <div id="files-list" style="display:none; margin-top:12px;">
+            <div class="preview-grid" id="files-grid"></div>
+        </div>
+    </section>
+
+    <!-- Step 2: Configurações -->
+    <section class="card" id="config-section" style="display:none;">
+        <div class="card-header">
+            <span class="step-badge">2</span>
+            <h2>Período e Funcionários</h2>
+        </div>
+
+        <!-- Datas -->
+        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
+            <div class="form-group" style="flex:1; min-width:180px;">
+                <label for="start-date">📅 Data Inicial</label>
+                <input type="text" id="start-date" class="form-input" placeholder="DD/MM/AAAA" maxlength="10">
+            </div>
+            <div class="form-group" style="flex:1; min-width:180px;">
+                <label for="end-date">📅 Data Final</label>
+                <input type="text" id="end-date" class="form-input" placeholder="DD/MM/AAAA" maxlength="10">
+            </div>
+        </div>
+
+        <!-- Tabela CPFs -->
+        <div class="form-group">
+            <label>👤 Funcionários e CPFs</label>
+            <table class="exceptions-table" id="cpf-table" style="width:100%; margin-bottom:10px;">
+                <thead>
+                    <tr>
+                        <th>Nome (minúsculas)</th>
+                        <th>CPF</th>
+                        <th style="width:50px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="cpf-body"></tbody>
+            </table>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+                <input type="text" id="inp-nome" class="form-input" placeholder="nome completo (minúsculas)" style="flex:2; min-width:200px;">
+                <input type="text" id="inp-cpf" class="form-input" placeholder="XXX.XXX.XXX-XX" style="flex:1; min-width:150px; max-width:180px;">
+                <button class="btn btn-sm btn-secondary" id="btn-add-cpf">
+                    <span class="material-icons-round">person_add</span> Adicionar
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Step 3: Gerar -->
+    <section class="card" id="actions-section" style="display:none;">
+        <div class="card-header">
+            <span class="step-badge">3</span>
+            <h2>Gerar Relatórios</h2>
+        </div>
+        <div class="actions-row">
+            <button class="btn btn-primary" id="btn-generate" style="font-size:15px; padding:10px 28px;">
+                <span class="material-icons-round">bolt</span>
+                Gerar Relatórios
+            </button>
+        </div>
+        <div class="progress-container" id="progress-container" style="display:none;">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <span class="progress-text" id="progress-text">Processando PDFs...</span>
+        </div>
+        <div class="download-box" id="download-box" style="display:none;">
+            <span class="material-icons-round download-icon">check_circle</span>
+            <span class="download-text" id="download-text">Relatórios gerados com sucesso!</span>
+            <a class="btn btn-success" id="btn-download" href="#" download>
+                <span class="material-icons-round">download</span>
+                Baixar ZIP
+            </a>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── Máscara de data DD/MM/AAAA ──────────────────────
+function applyDateMask(input) {
+    input.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 8);
+        if (v.length >= 5)      v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
+        else if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+        this.value = v;
+    });
+}
+applyDateMask(document.getElementById('start-date'));
+applyDateMask(document.getElementById('end-date'));
+
+
+let sessionId = null;
+let cpfDict = {
+    "michelle silva de moraes do nascimento": "CPF: 293.480.658-82",
+    "graziela delamura silva": "CPF: 435.842.658-19",
+    "micaela araujo": "CPF: 528.570.258-58",
+    "tahiara conceição": "CPF: 418.202.198-36"
+};
+
+// ─── Utilitários ─────────────────────────────────────
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+function showBlock(id) { document.getElementById(id).style.display = 'block'; }
+
+function toast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.innerHTML = `<span class="material-icons-round">${type === 'success' ? 'check_circle' : 'error'}</span> ${msg}`;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 4000);
+}
+
+// ─── Tabela de CPFs ───────────────────────────────────
+function renderCpfTable() {
+    const tbody = document.getElementById('cpf-body');
+    tbody.innerHTML = '';
+    for (const [nome, cpf] of Object.entries(cpfDict)) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${nome}</td>
+            <td>${cpf.replace('CPF: ', '')}</td>
+            <td>
+                <button class="btn-icon" onclick="removeCpf('${nome}')" title="Remover">
+                    <span class="material-icons-round" style="font-size:18px; color:#e03131;">delete</span>
+                </button>
+            </td>`;
+        tbody.appendChild(tr);
+    }
+}
+
+function removeCpf(nome) {
+    delete cpfDict[nome];
+    renderCpfTable();
+}
+
+document.getElementById('btn-add-cpf').addEventListener('click', () => {
+    const nome = document.getElementById('inp-nome').value.trim().toLowerCase();
+    const cpf  = document.getElementById('inp-cpf').value.trim();
+    if (!nome || !cpf) { toast('Preencha nome e CPF.', 'error'); return; }
+    cpfDict[nome] = `CPF: ${cpf}`;
+    renderCpfTable();
+    document.getElementById('inp-nome').value = '';
+    document.getElementById('inp-cpf').value = '';
+});
+
+renderCpfTable();
+
+// ─── Upload de PDFs ───────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(files) {
+    const pdfs = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (!pdfs.length) { toast('Selecione arquivos PDF.', 'error'); return; }
+
+    const grid = document.getElementById('files-grid');
+    grid.innerHTML = '';
+    pdfs.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `<span class="material-icons-round">picture_as_pdf</span><div><span class="preview-label">${f.name}</span><span class="preview-value">${(f.size/1024).toFixed(0)} KB</span></div>`;
+        grid.appendChild(div);
+    });
+    show('files-list');
+
+    // Faz upload
+    const formData = new FormData();
+    pdfs.forEach(f => formData.append('pdfs', f));
+
+    fetch('/modulo/mrcontabil/upload-pdfs', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { toast(data.error, 'error'); return; }
+            sessionId = data.session_id;
+            toast(`${data.files.length} PDF(s) enviado(s) com sucesso!`);
+            show('config-section');
+            show('actions-section');
+        })
+        .catch(() => toast('Erro ao enviar arquivos.', 'error'));
+}
+
+// ─── Gerar ────────────────────────────────────────────
+document.getElementById('btn-generate').addEventListener('click', () => {
+    if (!sessionId) { toast('Faça o upload dos PDFs primeiro.', 'error'); return; }
+
+    const startDate = document.getElementById('start-date').value.trim();
+    const endDate   = document.getElementById('end-date').value.trim();
+    if (!startDate || !endDate) { toast('Informe a data inicial e final.', 'error'); return; }
+
+    hide('download-box');
+    showBlock('progress-container');
+    document.getElementById('progress-fill').style.width = '60%';
+    document.getElementById('progress-text').textContent = 'Processando PDFs...';
+
+    fetch('/modulo/mrcontabil/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            session_id: sessionId,
+            start_date: startDate,
+            end_date: endDate,
+            cpf_dict: cpfDict
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        hide('progress-container');
+        if (data.error) { toast(data.error, 'error'); return; }
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('btn-download').href = data.download_url;
+        document.getElementById('download-text').textContent =
+            `${data.count} relatório(s) gerado(s) com sucesso!`;
+        show('download-box');
+        toast(`${data.count} relatório(s) gerado(s)!`);
+    })
+    .catch(() => { hide('progress-container'); toast('Erro ao gerar relatórios.', 'error'); });
+});
+</script>
+{% endblock %}
